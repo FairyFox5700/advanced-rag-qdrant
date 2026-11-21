@@ -30,11 +30,37 @@ def heuristic_route(question: str) -> Route:
 def heuristic_triples(text: str) -> list[dict]:
     """No-LLM fallback for GraphRAG extraction: co-occurrence of capitalized
     phrases within a chunk becomes a generic "related_to" edge. Weaker than
-    LLM extraction but keeps the graph pipeline runnable offline."""
-    capitalized = re.findall(r"\b[A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*\b", text)
-    entities = sorted(set(capitalized))[:12]
+    LLM extraction but keeps the graph pipeline runnable offline.
+
+    Two cleanups over a naive "any capitalized word" regex:
+      1. Collapse whitespace (incl. newlines) before matching, so a phrase
+         that wraps across a line break (e.g. "Highline\\nVentures") is
+         captured as one entity instead of splitting mid-phrase.
+      2. Drop common sentence-initial function words (the, this, both, ...)
+         that are only capitalized because they start a sentence, not
+         because they're proper nouns — otherwise every chunk pollutes the
+         graph with near-identical generic nodes.
+    """
+    normalized = re.sub(r"\s+", " ", text)
+    capitalized = re.findall(r"\b[A-Z][a-zA-Z0-9]+(?:\s[A-Z][a-zA-Z0-9]+)*\b", normalized)
+
+    entities = sorted(
+        {
+            e for e in capitalized
+            if e.split()[0].lower() not in _STOPWORDS and len(e) > 2
+        }
+    )[:12]
+
     triples = []
     for i in range(len(entities)):
         for j in range(i + 1, len(entities)):
             triples.append({"subject": entities[i], "relation": "related_to", "object": entities[j]})
     return triples[:20]
+
+
+_STOPWORDS = {
+    "the", "this", "that", "these", "those", "it", "its", "in", "by", "before",
+    "following", "both", "after", "as", "at", "for", "on", "with", "when",
+    "while", "if", "a", "an", "and", "but", "or", "so", "to", "from", "of",
+    "approximately", "additionally", "however", "therefore", "because",
+}
