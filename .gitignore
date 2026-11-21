@@ -7,6 +7,8 @@ venv/
 .pytest_cache/
 .ragas_cache/
 qdrant_storage/
+data/parent_store.json
+data/knowledge_graph.json
 *.log
 .DS_Store
 eval/results/
