@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.ragas_cache/
+qdrant_storage/
+*.log
+.DS_Store
+eval/results/

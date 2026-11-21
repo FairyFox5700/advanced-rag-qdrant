@@ -1,0 +1,84 @@
+"""Builds a 50-question RAGAS evaluation dataset grounded in the sample docs
+shipped in data/sample_docs/. Checklist item 6.
+
+Each entry has: question, ground_truth (reference answer), and a `category`
+tag (simple / multi_hop / graph) so results can be sliced by retrieval
+strategy when comparing adaptive routing decisions.
+
+Run directly to (re)write eval/questions.json:
+    python -m eval.build_dataset
+"""
+from __future__ import annotations
+
+import json
+import os
+
+QUESTIONS: list[dict] = [
+    # --- simple, single-fact lookups -------------------------------------------------
+    {"question": "Who founded Northwind Robotics?", "ground_truth": "Elena Vasquez and Marcus Chen founded Northwind Robotics in 2017.", "category": "simple"},
+    {"question": "Where is Northwind Robotics headquartered?", "ground_truth": "Seattle, Washington.", "category": "simple"},
+    {"question": "Who is the CEO of Northwind Robotics?", "ground_truth": "Elena Vasquez.", "category": "simple"},
+    {"question": "Who is the CTO of Northwind Robotics?", "ground_truth": "Marcus Chen.", "category": "simple"},
+    {"question": "Where did Marcus Chen work before founding Northwind Robotics?", "ground_truth": "Boston Dynamics, where he worked on legged locomotion control systems.", "category": "simple"},
+    {"question": "Where is Northwind Robotics' manufacturing plant located?", "ground_truth": "Portland, Oregon.", "category": "simple"},
+    {"question": "What is the name of Northwind Robotics' core robot product line?", "ground_truth": "The Sentinel series.", "category": "simple"},
+    {"question": "When was the Sentinel-1 released?", "ground_truth": "2018.", "category": "simple"},
+    {"question": "What sensors does the Sentinel-1 use for navigation?", "ground_truth": "A combination of LIDAR and stereo cameras.", "category": "simple"},
+    {"question": "What is the maximum load the Sentinel-1 can carry?", "ground_truth": "Up to 1,000 kilograms.", "category": "simple"},
+    {"question": "How long does a single battery charge last on the Sentinel-1?", "ground_truth": "Approximately 8 hours.", "category": "simple"},
+    {"question": "When was the Sentinel-2 released?", "ground_truth": "2021.", "category": "simple"},
+    {"question": "How long does a single battery charge last on the Sentinel-2?", "ground_truth": "Approximately 16 hours.", "category": "simple"},
+    {"question": "What new hardware feature does the Sentinel-2 introduce?", "ground_truth": "A redesigned gripper arm capable of picking individual boxes, plus a safety-rated laser scanner.", "category": "simple"},
+    {"question": "What navigation stack do the Sentinel robots run on?", "ground_truth": "NorthwindOS.", "category": "simple"},
+    {"question": "Who designed NorthwindOS?", "ground_truth": "Marcus Chen.", "category": "simple"},
+    {"question": "When was the Sentinel-3 announced?", "ground_truth": "2023.", "category": "simple"},
+    {"question": "What new capability does the Sentinel-3 add?", "ground_truth": "A robotic arm with 6 degrees of freedom for shelf-picking tasks.", "category": "simple"},
+    {"question": "Who founded Cascade Logistics?", "ground_truth": "Robert Nguyen.", "category": "simple"},
+    {"question": "When was Cascade Logistics founded?", "ground_truth": "2005.", "category": "simple"},
+    {"question": "Where is Cascade Logistics headquartered?", "ground_truth": "Tacoma, Washington.", "category": "simple"},
+    {"question": "What does Cascade Logistics specialize in?", "ground_truth": "Same-day delivery for e-commerce retailers.", "category": "simple"},
+    {"question": "How many Sentinel-1 robots did Cascade Logistics initially deploy?", "ground_truth": "50 units.", "category": "simple"},
+    {"question": "By how much did the Sentinel-1 deployment reduce pallet transport time?", "ground_truth": "By 40 percent in the first year.", "category": "simple"},
+    {"question": "Who led Northwind Robotics' Series B funding round?", "ground_truth": "Highline Ventures.", "category": "simple"},
+    {"question": "In what year did Northwind Robotics raise its Series B?", "ground_truth": "2021.", "category": "simple"},
+    {"question": "What does Highline Ventures focus on?", "ground_truth": "Robotics and industrial automation startups.", "category": "simple"},
+    {"question": "What role does Robert Nguyen hold at Northwind Robotics?", "ground_truth": "He sits on Northwind Robotics' advisory board.", "category": "simple"},
+    {"question": "What does parent-document retrieval balance?", "ground_truth": "Retrieval precision against the amount of context available to the generator.", "category": "simple"},
+    {"question": "What does GraphRAG build from a document collection?", "ground_truth": "A knowledge graph of entities and relationships.", "category": "simple"},
+
+    # --- multi-hop / comparison questions ----------------------------------------
+    {"question": "How do the Sentinel-1 and Sentinel-2 differ in battery life?", "ground_truth": "The Sentinel-1 lasts about 8 hours per charge while the Sentinel-2 doubles that to about 16 hours.", "category": "multi_hop"},
+    {"question": "Compare the gripper capabilities of the Sentinel-1 and Sentinel-2.", "ground_truth": "The Sentinel-1 can only move pallets, while the Sentinel-2 adds a redesigned gripper arm that can pick individual boxes.", "category": "multi_hop"},
+    {"question": "What is the difference between the Sentinel-2 and the Sentinel-3 in terms of capability?", "ground_truth": "The Sentinel-2 picks individual boxes with a gripper arm, while the Sentinel-3 adds a 6-degree-of-freedom robotic arm for piece-level shelf-picking.", "category": "multi_hop"},
+    {"question": "What safety feature was added between the Sentinel-1 and Sentinel-2, and why was it needed?", "ground_truth": "The Sentinel-2 added a safety-rated laser scanner, needed for closer-proximity operation required by the Cascade Logistics deployment.", "category": "multi_hop"},
+    {"question": "List all Sentinel product generations and their release years.", "ground_truth": "Sentinel-1 (2018), Sentinel-2 (2021), Sentinel-3 (announced 2023, in pilot).", "category": "multi_hop"},
+    {"question": "What funding did Northwind Robotics raise and who participated?", "ground_truth": "A Series B round led by Highline Ventures, with Cascade Logistics participating as a strategic investor.", "category": "multi_hop"},
+    {"question": "How did Cascade Logistics' relationship with Northwind Robotics evolve from 2019 to 2021?", "ground_truth": "Cascade Logistics started as the first customer deploying Sentinel-1 robots in 2019, then in 2021 expanded the partnership by purchasing Sentinel-2 units and becoming a strategic investor in the Series B round.", "category": "multi_hop"},
+    {"question": "What are the pros and cons of hybrid search compared to pure dense retrieval?", "ground_truth": "Hybrid search combines dense retrieval's semantic matching with sparse/BM25's exact keyword matching, fused via RRF, generally improving recall over dense-only search at some added complexity.", "category": "multi_hop"},
+    {"question": "How do reranking and parent-document retrieval work together in an advanced RAG pipeline?", "ground_truth": "Reranking reorders small candidate chunks with a cross-encoder for precision, and parent-document retrieval then expands the top reranked chunks to their larger parent chunk for richer context.", "category": "multi_hop"},
+    {"question": "Both NorthwindOS and the Sentinel-3 robotic arm are engineering features — who is responsible for the robots' core navigation software and what algorithm does it use?", "ground_truth": "Marcus Chen designed NorthwindOS, which uses particle-filter-based localization with a dynamic window approach for obstacle avoidance.", "category": "multi_hop"},
+
+    # --- relational / graph questions -------------------------------------------
+    {"question": "How are Northwind Robotics and Cascade Logistics connected?", "ground_truth": "Cascade Logistics is Northwind Robotics' first customer (deploying Sentinel-1 and later Sentinel-2 robots) and also a strategic investor in Northwind Robotics' Series B funding round.", "category": "graph"},
+    {"question": "What is the relationship between Robert Nguyen and Northwind Robotics?", "ground_truth": "Robert Nguyen, founder of Cascade Logistics, sits on Northwind Robotics' advisory board following the companies' partnership.", "category": "graph"},
+    {"question": "How is Highline Ventures related to Cascade Logistics?", "ground_truth": "Highline Ventures led Northwind Robotics' Series B round in which Cascade Logistics also participated as a strategic investor, making them co-investors in Northwind Robotics.", "category": "graph"},
+    {"question": "What connects Marcus Chen to the Cascade Logistics deployment?", "ground_truth": "Marcus Chen designed NorthwindOS and the original Sentinel-1 navigation stack, and the Sentinel-2's safety-rated laser scanner (used in the expanded Cascade Logistics deployment) was shaped partly by feedback from Cascade Logistics' advisory input.", "category": "graph"},
+    {"question": "How do Elena Vasquez and Marcus Chen relate to each other and to the Sentinel product line?", "ground_truth": "Elena Vasquez and Marcus Chen co-founded Northwind Robotics in 2017; Marcus Chen specifically led the design of the Sentinel-1 navigation stack and NorthwindOS as CTO, while Elena Vasquez leads the company as CEO.", "category": "graph"},
+    {"question": "What is the connection between the Tacoma distribution center and Northwind Robotics?", "ground_truth": "The Tacoma distribution center, operated by Cascade Logistics, was the site of Northwind Robotics' first Sentinel-1 fleet deployment in 2019.", "category": "graph"},
+    {"question": "How are Highline Ventures and Northwind Robotics' Portland plant connected?", "ground_truth": "Highline Ventures' Series B investment in Northwind Robotics was used to scale manufacturing of the Sentinel-2, which is assembled at the Portland, Oregon plant.", "category": "graph"},
+    {"question": "What links the Sentinel-2's gripper redesign to Cascade Logistics?", "ground_truth": "Cascade Logistics' operational feedback, provided via Robert Nguyen's seat on Northwind Robotics' advisory board, shaped the safety-rated laser scanner added alongside the Sentinel-2's redesigned gripper arm.", "category": "graph"},
+    {"question": "How does GraphRAG's approach to connecting entities differ from RRF's approach to combining retrieval results?", "ground_truth": "GraphRAG connects information by traversing a knowledge graph of extracted entities and relationships, while RRF combines separate ranked lists from dense and sparse retrieval into one ranking without graph structure.", "category": "graph"},
+    {"question": "What ties Elena Vasquez's academic background to the company's robotics focus?", "ground_truth": "Elena Vasquez's prior work as a robotics researcher at the University of Washington preceded her co-founding Northwind Robotics, a company focused on autonomous warehouse robotics.", "category": "graph"},
+]
+
+
+def main() -> None:
+    assert len(QUESTIONS) == 50, f"expected 50 questions, got {len(QUESTIONS)}"
+    out_path = os.path.join(os.path.dirname(__file__), "questions.json")
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump(QUESTIONS, fh, indent=2, ensure_ascii=False)
+    print(f"Wrote {len(QUESTIONS)} questions to {out_path}")
+
+
+if __name__ == "__main__":
+    main()

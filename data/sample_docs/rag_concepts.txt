@@ -1,0 +1,27 @@
+Retrieval-Augmented Generation (RAG) is a technique that combines a retrieval system
+with a large language model so that generated answers are grounded in external,
+up-to-date, or proprietary knowledge rather than relying solely on the model's
+parametric memory.
+
+A basic RAG pipeline consists of three stages: chunking and indexing documents,
+retrieving the most relevant chunks for a given query using vector similarity
+search, and feeding those chunks to a language model as context for generation.
+
+Hybrid search combines dense vector retrieval, which captures semantic similarity,
+with sparse retrieval methods such as BM25, which capture exact keyword matches.
+Reciprocal Rank Fusion (RRF) is a common technique for merging the ranked result
+lists from dense and sparse retrieval into a single ranking, without needing to
+normalize scores across the two different scales.
+
+Reranking is a second-stage retrieval step that uses a more expensive but more
+accurate model, such as a cross-encoder, to reorder an initial set of candidate
+documents retrieved by a faster first-stage retriever.
+
+Parent-document retrieval indexes small chunks for precise matching but returns
+their larger parent chunk as context, balancing retrieval precision against the
+amount of context available to the generator.
+
+GraphRAG builds a knowledge graph of entities and relationships extracted from a
+document collection, and retrieves information by traversing that graph rather than
+relying only on vector similarity, which can surface answers to multi-hop and
+relational questions that pure vector search misses.

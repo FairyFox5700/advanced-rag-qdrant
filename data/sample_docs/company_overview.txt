@@ -1,0 +1,22 @@
+Northwind Robotics was founded in 2017 by Elena Vasquez and Marcus Chen in Seattle,
+Washington. The company specializes in autonomous warehouse robots and builds its
+core product line, the Sentinel series, for logistics automation.
+
+Elena Vasquez serves as CEO and previously worked as a robotics researcher at the
+University of Washington. Marcus Chen serves as CTO and led the original design of
+the Sentinel-1 navigation stack. Before founding Northwind Robotics, Marcus Chen
+worked at Boston Dynamics on legged locomotion control systems.
+
+In 2019, Northwind Robotics partnered with Cascade Logistics to deploy the first
+fleet of 50 Sentinel-1 robots at a distribution center in Tacoma. The partnership
+with Cascade Logistics was considered a turning point for the company, proving that
+autonomous robots could operate safely alongside human workers in a live warehouse.
+
+By 2021, Northwind Robotics had raised a Series B funding round led by Highline
+Ventures, with participation from Cascade Logistics as a strategic investor. The
+funding was used to scale manufacturing of the Sentinel-2, an upgraded robot with
+improved battery life and a redesigned gripper arm.
+
+Northwind Robotics is headquartered in Seattle but operates a manufacturing plant in
+Portland, Oregon. The Portland plant assembles both the Sentinel-1 and Sentinel-2
+product lines and employs approximately 300 people.

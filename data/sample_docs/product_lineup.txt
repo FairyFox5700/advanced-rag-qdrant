@@ -1,0 +1,20 @@
+The Sentinel-1 is Northwind Robotics' first commercial product, released in 2018.
+It is an autonomous mobile robot designed to transport pallets within a warehouse.
+The Sentinel-1 uses a combination of LIDAR and stereo cameras for navigation and can
+carry loads of up to 1,000 kilograms. Its maximum travel speed is 2 meters per
+second, and a single battery charge lasts approximately 8 hours.
+
+The Sentinel-2, released in 2021, is the successor to the Sentinel-1. It doubles the
+battery life to roughly 16 hours per charge and introduces a redesigned gripper arm
+capable of picking individual boxes rather than only moving pallets. The Sentinel-2
+also adds a safety-rated laser scanner that allows it to operate in closer proximity
+to human workers, a key requirement for the Cascade Logistics deployment.
+
+Both the Sentinel-1 and Sentinel-2 run on the NorthwindOS navigation stack, originally
+designed by Marcus Chen. NorthwindOS uses a particle-filter-based localization
+algorithm combined with a dynamic window approach for obstacle avoidance.
+
+In 2023, Northwind Robotics announced the Sentinel-3, which adds a robotic arm with
+6 degrees of freedom for shelf-picking tasks, moving the product line beyond pallet
+and box transport into piece-level picking. The Sentinel-3 is still in limited pilot
+deployment as of the most recent annual report.

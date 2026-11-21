@@ -1,0 +1,22 @@
+Cascade Logistics is a regional logistics and fulfillment company headquartered in
+Tacoma, Washington. Founded in 2005 by Robert Nguyen, Cascade Logistics operates
+distribution centers across the Pacific Northwest and specializes in same-day
+delivery for e-commerce retailers.
+
+In 2019, Cascade Logistics became the first customer of Northwind Robotics' Sentinel-1
+robots, deploying an initial fleet of 50 units at its Tacoma distribution center. The
+deployment reduced average pallet transport time by 40 percent within the first year.
+
+Following the success of the pilot, Cascade Logistics expanded its partnership with
+Northwind Robotics in 2021, both as a customer purchasing Sentinel-2 units and as a
+strategic investor in Northwind Robotics' Series B funding round led by Highline
+Ventures.
+
+Robert Nguyen sits on Northwind Robotics' advisory board as a result of this
+partnership, providing operational feedback that shaped the safety-rated laser
+scanner added to the Sentinel-2.
+
+Highline Ventures is a Seattle-based venture capital firm that focuses on robotics
+and industrial automation startups. In addition to Northwind Robotics, Highline
+Ventures has invested in several other logistics-technology companies in the Pacific
+Northwest.
