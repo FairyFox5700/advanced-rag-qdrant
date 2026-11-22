@@ -1,9 +1,42 @@
 # Advanced RAG over Qdrant
 
-A hands-on reference implementation of the **Advanced RAG Implementation Checklist** —
-every item built as real, runnable code against [Qdrant](https://qdrant.tech/) and
-[FastAPI](https://fastapi.tiangolo.com/), with [LangGraph](https://www.langchain.com/langgraph)
-adaptive routing and a lightweight [GraphRAG](https://microsoft.github.io/graphrag/) module.
+[![CI](https://github.com/FairyFox5700/advanced-rag-qdrant/actions/workflows/ci.yml/badge.svg)](https://github.com/FairyFox5700/advanced-rag-qdrant/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](requirements.txt)
+
+A hands-on reference implementation of eight production RAG techniques, built
+as real, runnable code against [Qdrant](https://qdrant.tech/) and
+[FastAPI](https://fastapi.tiangolo.com/) — not slides, not pseudocode. Every
+technique is wired into one coherent FastAPI service, exercised end-to-end
+against a live Qdrant instance, and evaluated with [RAGAS](https://github.com/explodinggroup/ragas)
+on a 50-question labeled dataset.
+
+**Why this exists:** naive RAG (embed, cosine-search top-k, stuff into a
+prompt) breaks down fast on keyword-sensitive queries, multi-hop questions,
+and relational ("how are X and Y connected") questions. This project is a
+working answer to "what does it actually take to fix that?" — hybrid
+retrieval, reranking, query rewriting, adaptive routing, and a knowledge
+graph, all measured against a baseline instead of just asserted.
+
+## Skills demonstrated
+
+- **Retrieval engineering**: dense + sparse hybrid search fused with
+  Reciprocal Rank Fusion, cross-encoder reranking, parent-document retrieval
+  for precision/context trade-offs.
+- **LLM orchestration**: query rewriting, multi-query expansion, and a
+  [LangGraph](https://www.langchain.com/langgraph) state machine that
+  classifies each question and adaptively routes it to the retrieval
+  strategy best suited to it.
+- **Knowledge graphs for RAG**: lightweight GraphRAG — LLM-based entity/relation
+  extraction into a NetworkX graph, with an offline heuristic fallback, used
+  for multi-hop relational queries that pure vector search misses.
+- **Evaluation discipline**: a 50-question RAGAS dataset (tagged
+  simple/multi-hop/graph) and a runner that scores faithfulness, answer
+  relevancy, context precision, and context recall per retrieval strategy —
+  so improvements are measured, not assumed.
+- **Production-minded engineering**: offline-friendly by default (local
+  embeddings, graceful LLM fallback), deterministic re-ingestion, CI running
+  the pure-logic test suite on every push, Dockerized infra.
 
 ## Checklist coverage
 
@@ -23,7 +56,6 @@ adaptive routing and a lightweight [GraphRAG](https://microsoft.github.io/graphr
 ![Architecture diagram](docs/architecture.png)
 
 *(Mermaid source: [`docs/architecture.mmd`](docs/architecture.mmd))*
-```
 
 ## Quickstart
 
@@ -202,6 +234,34 @@ eval/
 data/sample_docs/           demo corpus (fictional robotics company)
 tests/test_smoke.py         offline unit tests (no Qdrant/API key needed)
 ```
+
+## Limitations & what I'd do next for production
+
+Being upfront about scope — this is a reference implementation, not a
+production system:
+
+- **Heuristic fallbacks are intentionally weaker than the LLM path.** The
+  no-API-key routing classifier and GraphRAG entity extraction use regex/
+  keyword heuristics (`app/heuristics.py`) so the whole pipeline is runnable
+  and demoable for free — but they're noisier than LLM-based extraction.
+  Production use should run with `OPENAI_API_KEY` configured.
+- **No auth, rate limiting, or multi-tenant isolation** on the FastAPI layer
+  — it's a reference/demo API, not internet-facing.
+- **Single-collection, single-corpus design.** A real deployment would need
+  per-tenant collections, incremental/streaming ingestion, and a
+  document-update/delete path (today, re-ingestion recreates the collection).
+  Hooks for this exist but aren't on the public API — `ensure_collection`
+  already supports non-destructive upserts.
+- **GraphRAG here is "GraphRAG-lite"**: single-pass entity/relation
+  extraction per chunk and 1-hop traversal, not the full community-detection
+  + hierarchical-summarization pipeline from Microsoft's GraphRAG paper.
+  It's enough to demonstrate the retrieval pattern and win on relational
+  questions pure vector search misses, not a drop-in replacement for the
+  full research implementation.
+- **Evaluation dataset is hand-authored and corpus-specific** (50 questions
+  over a 4-document demo corpus) to keep the project self-contained and
+  reproducible without external licensing concerns — swap in your own corpus
+  and regenerate questions for a real benchmark.
 
 ## License
 
