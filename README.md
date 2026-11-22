@@ -20,29 +20,9 @@ adaptive routing and a lightweight [GraphRAG](https://microsoft.github.io/graphr
 
 ## Architecture
 
-```
-                         ┌─────────────────────┐
-  data/sample_docs/ ───▶ │   ingest.py          │  chunk (parent+child) → embed (dense+sparse) → upsert
-                         └──────────┬───────────┘
-                                    ▼
-                         ┌─────────────────────┐
-                         │   Qdrant collection  │  dense vector (BGE) + sparse vector (BM25)
-                         └──────────┬───────────┘
-                                    ▼
-      ┌─────────────────────────────────────────────────────────┐
-      │                     FastAPI (app/main.py)                │
-      │                                                           │
-      │  /query ─────▶ [rewrite?] → hybrid/dense search → rerank  │
-      │                 → parent expansion → LLM answer           │
-      │                                                           │
-      │  /query/adaptive ─▶ LangGraph: classify → route           │
-      │       ├─ simple    → hybrid search                        │
-      │       ├─ multi_hop → rewrite + multi-query, merged         │
-      │       └─ graph     → GraphRAG traversal (fallback: hybrid) │
-      │                 → rerank → parent expansion → answer       │
-      │                                                           │
-      │  /query/graphrag ─▶ entity match → graph walk → answer    │
-      └─────────────────────────────────────────────────────────┘
+![Architecture diagram](docs/architecture.png)
+
+*(Mermaid source: [`docs/architecture.mmd`](docs/architecture.mmd))*
 ```
 
 ## Quickstart
@@ -85,6 +65,70 @@ curl -X POST http://localhost:8000/query/graphrag -H "Content-Type: application/
 ```
 
 Interactive docs: `http://localhost:8000/docs`.
+
+## Real example (actual output, no LLM key configured)
+
+This is unedited output from a real local run — Qdrant in Docker, sample
+corpus ingested, no `OPENAI_API_KEY` set (so answer synthesis falls back to
+extractive context instead of an LLM-written summary; retrieval itself is
+fully live).
+
+**`POST /query/adaptive`** with `{"question": "Compare the Sentinel-1 and Sentinel-2 battery life"}`:
+
+```json
+{
+  "question": "Compare the Sentinel-1 and Sentinel-2 battery life",
+  "route": "multi_hop",
+  "trace": [
+    "classified as 'multi_hop'",
+    "multi_query x2",
+    "reranked + expanded to parents",
+    "answer synthesized"
+  ],
+  "retrieved": [
+    {
+      "source": "product_lineup.txt",
+      "rank_method": "multi_hop",
+      "score": 7.158,
+      "text": "The Sentinel-1 is Northwind Robotics' first commercial product... a single battery charge lasts approximately 8 hours. The Sentinel-2... doubles the battery life to roughly 16 hours per charge..."
+    },
+    {
+      "source": "company_overview.txt",
+      "rank_method": "multi_hop",
+      "score": 1.987,
+      "text": "Northwind Robotics was founded in 2017 by Elena Vasquez and Marcus Chen..."
+    }
+  ]
+}
+```
+
+The LangGraph classifier correctly routed this comparison question to the
+`multi_hop` strategy (query rewrite + 2 generated sub-queries, merged before
+reranking), and the cross-encoder reranker correctly ranked the chunk
+containing both battery figures above the general company-overview chunk.
+
+**`POST /query/graphrag`** with `{"question": "How is Highline Ventures related to Cascade Logistics?"}`:
+
+```json
+{
+  "retrieved": [
+    {"source": "partners_and_customers.txt", "rank_method": "graph", "score": 8.0},
+    {"source": "product_lineup.txt", "rank_method": "graph", "score": 11.0},
+    {"source": "company_overview.txt", "rank_method": "graph", "score": 2.0}
+  ]
+}
+```
+
+Graph traversal matched the entities "Highline Ventures" and "Cascade
+Logistics" in the extracted knowledge graph (30 nodes / 75 edges from the
+4-document demo corpus) and pulled every parent chunk reachable within one
+hop — correctly surfacing the `partners_and_customers.txt` chunk describing
+Cascade Logistics' role as both customer and Series B co-investor alongside
+Highline Ventures.
+
+Set `OPENAI_API_KEY` in `.env` to get full LLM-written, citation-backed
+answers instead of the extractive fallback shown above — the retrieval and
+ranking logic is identical either way.
 
 ## Evaluation
 

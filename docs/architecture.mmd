@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph Ingestion["Ingestion pipeline — app/ingest.py"]
+        docs[("data/sample_docs/*.txt")] --> chunk["chunking.py\nparent (1600 chars) + child (400 chars) split"]
+        chunk --> parentStore[("data/parent_store.json\nparent chunks, payload-only")]
+        chunk --> embed["embeddings.py\ndense: BGE-small (fastembed)\nsparse: BM25 (fastembed)"]
+        embed --> qdrant[("Qdrant collection\ndense + sparse vectors\nper child chunk")]
+        parentStore --> graphExtract["graphrag/extract.py\nLLM or heuristic triple extraction"]
+        graphExtract --> kg[("data/knowledge_graph.json\nNetworkX entity graph")]
+    end
+
+    subgraph API["FastAPI — app/main.py"]
+        direction TB
+        reqQuery(["POST /query"])
+        reqAdaptive(["POST /query/adaptive"])
+        reqGraph(["POST /query/graphrag"])
+    end
+
+    subgraph QueryPath["Configurable query path"]
+        rewrite["rewrite.py\nquery rewrite + multi-query"] --> hybrid1["hybrid.py\ndense + sparse search -> RRF fuse"]
+        hybrid1 --> rerank1["reranker.py\ncross-encoder rerank"]
+        rerank1 --> expand1["parent_document.py\nexpand to parent chunk"]
+        expand1 --> answer1["llm.py\nsynthesize_answer"]
+    end
+
+    subgraph Adaptive["LangGraph adaptive routing — adaptive_graph.py"]
+        classify{"classify_route\nLLM or heuristic"}
+        classify -->|simple| simpleR["hybrid_search"]
+        classify -->|multi_hop| multiR["rewrite + multi-query\nmerge results"]
+        classify -->|graph| graphR["graph_retrieve\nentity match + traversal\nfallback: hybrid_search"]
+        simpleR --> rerank2["rerank + expand to parent"]
+        multiR --> rerank2
+        graphR --> rerank2
+        rerank2 --> answer2["synthesize_answer"]
+    end
+
+    subgraph GraphRAG["GraphRAG — graphrag/retrieval.py"]
+        seedMatch["match entities in question\nagainst graph nodes"] --> traverse["traverse 1-hop neighborhood"]
+        traverse --> gchunks["collect parent chunks\nattached to matched nodes"]
+        gchunks --> answer3["synthesize_answer"]
+    end
+
+    qdrant --> hybrid1
+    qdrant --> simpleR
+    qdrant --> multiR
+    kg --> graphR
+    kg --> seedMatch
+
+    reqQuery --> QueryPath
+    reqAdaptive --> Adaptive
+    reqGraph --> GraphRAG
+
+    style Ingestion fill:#eef2ff,stroke:#4f46e5
+    style API fill:#ecfdf5,stroke:#059669
+    style QueryPath fill:#fff7ed,stroke:#ea580c
+    style Adaptive fill:#fef2f2,stroke:#dc2626
+    style GraphRAG fill:#f5f3ff,stroke:#7c3aed
